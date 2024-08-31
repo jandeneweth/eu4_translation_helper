@@ -19,13 +19,6 @@ def reload_localisation_to_tsv(
     translation_language: str,
     reference_exclude_patterns: list[str],
 ):
-    tsv_filepath = tool_dir / _TSV_FILENAME
-    # TODO: Take existing TSV into account, extend it
-    if tsv_filepath.exists():
-        raise RuntimeError(
-            f"The TSV file already exists, use the 'flush' flag to flush pending changes "
-            f"to the localisation files first. Filepath: {str(tsv_filepath)!r}"
-        )
     exclude_patterns_re = [re.compile(raw) for raw in reference_exclude_patterns]
     ref_files = [
         fp
@@ -40,6 +33,18 @@ def reload_localisation_to_tsv(
         filepaths=[transl_fp],
         language=translation_language,
     )
+    tsv_filepath = tool_dir / _TSV_FILENAME
+    if tsv_filepath.exists():
+        # If TSV file already exists, prefer its data
+        tsv_transl_locdata = parse_localisation_from_tsv(
+            filepath=tsv_filepath,
+            language=translation_language,
+        )
+        transl_locdata.entries.update(tsv_transl_locdata.entries)
+        raise RuntimeError(
+            f"The TSV file already exists, use the 'flush' flag to flush pending changes "
+            f"to the localisation files first. Filepath: {str(tsv_filepath)!r}"
+        )
     write_localisation_to_tsv(
         outpath=tsv_filepath,
         ref_locdata=ref_locdata,

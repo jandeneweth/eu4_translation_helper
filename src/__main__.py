@@ -10,8 +10,8 @@ def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "A translation helper tool for Europa Universalis 4. "
-            "Use the generated TSV file to record translations (e.g. with Excel), "
-            "and rerun the program in 'flush' mode to write it to a localisation file."
+            "Run in normal mode to (re-load) a localisations table, edit them (e.g. with Excel), "
+            "and rerun the program in 'flush' mode to write the translations to a localisation file."
         ),
         epilog="Author: lichtkang",
     )
