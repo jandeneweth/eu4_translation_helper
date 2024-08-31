@@ -1,4 +1,3 @@
-import collections
 import csv
 import dataclasses
 import logging
@@ -27,24 +26,32 @@ Text: t.TypeAlias = str
 
 @dataclasses.dataclass
 class LocalisationData:
-    languages: set[LangId] = dataclasses.field(default_factory=set)
-    entries: dict[LocId, dict[LangId, Text]] = dataclasses.field(default_factory=lambda: collections.defaultdict(dict))
+    language: str
+    entries: dict[LocId, Text] = dataclasses.field(default_factory=dict)
 
 
 _LOC_LANG_RE = re.compile(r"^l_([a-z]+):$")
 _LOC_SEPARATOR_RE = re.compile(r":[0-9]")
 
 
-def _load_loc_from_file(filepath: pathlib.Path) -> LocFile | None:
+def _load_loc_from_file(
+    filepath: pathlib.Path,
+    language: str,
+) -> LocFile | None:
+    logging.info(f"Parsing {str(filepath)!r}")
     lines = []
     with open(filepath, "r", encoding="utf-8-sig") as fh:
         # Get the language
-        language_raw = fh.readline().strip()
-        language_match = _LOC_LANG_RE.match(language_raw)
-        if not language_match:
+        file_language_raw = fh.readline().strip()
+        file_language_match = _LOC_LANG_RE.match(file_language_raw)
+        if not file_language_match:
             logging.warning(f"Could not find language from file {filepath.name!r}")
-            return
-        language = language_match.group(1)
+            return None
+        file_language = file_language_match.group(1)
+        # Ignore unwanted languages
+        if file_language != language:
+            logging.info(f"Skipping {filepath.name!r}, wrong language ({file_language!r} instead of {language!r})")
+            return None
         # Parse lines
         for line_nr, line in enumerate(fh, start=2):
             line = line.strip()
@@ -66,77 +73,89 @@ def _load_loc_from_file(filepath: pathlib.Path) -> LocFile | None:
     return LocFile(sourcefile=filepath, language=language, lines=lines)
 
 
-def _merge_localisations(locfiles: list[LocFile]) -> LocalisationData:
-    locdata = LocalisationData()
+def _merge_localisations(
+    locfiles: list[LocFile],
+    language: str,
+) -> LocalisationData:
+    locdata = LocalisationData(language=language)
     for locfile in locfiles:
-        locdata.languages.add(locfile.language)
+        if locfile.language != locdata.language:
+            continue
         for locline in locfile.lines:
-            if locfile.language in locdata.entries[locline.identifier]:
-                logging.warning(
-                    f"Skipping duplicate definition of {locline.identifier!r} in language {locfile.language!r}"
-                )
+            if locline.identifier in locdata.entries:
+                logging.warning(f"Skipping duplicate definition of {locline.identifier!r}")
                 continue
-            locdata.entries[locline.identifier][locfile.language] = locline.text
+            locdata.entries[locline.identifier] = locline.text
     return locdata
 
 
-def parse_localisation_from_locfiles(dirpath: pathlib.Path, exclude_patterns: list[str]) -> LocalisationData:
+def parse_localisation_from_locfiles(
+    filepaths: list[pathlib.Path],
+    language: str,
+) -> LocalisationData:
     locfiles = []
-    exclude_patterns_re = [re.compile(raw) for raw in exclude_patterns]
-    for filepath in dirpath.iterdir():
-        if not filepath.is_file():
+    for filepath in filepaths:
+        if not filepath.exists():
             continue
-        if any(pattern.match(str(filepath)) for pattern in exclude_patterns_re):
-            continue
-        locfile = _load_loc_from_file(filepath=filepath)
+        locfile = _load_loc_from_file(filepath=filepath, language=language)
         if locfile is not None:
             locfiles.append(locfile)
-    return _merge_localisations(locfiles=locfiles)
+    return _merge_localisations(locfiles=locfiles, language=language)
 
 
-def parse_localisation_from_tsv(filepath: pathlib.Path) -> LocalisationData:
-    locdata = LocalisationData()
+def parse_localisation_from_tsv(
+    filepath: pathlib.Path,
+    language: str,
+) -> LocalisationData:
+    locdata = LocalisationData(language=language)
     with open(filepath, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(
             fh,
             delimiter="\t",
         )
-        locdata.languages.update(name for name in reader.fieldnames if name != "identifier")
         for entry in reader:
             identifier = entry["identifier"]
-            for language in locdata.languages:
-                locdata.entries[identifier][language] = entry[language]
+            locdata.entries[identifier] = entry[language]
     return locdata
 
 
-def write_localisation_to_locfiles(loc_dir: pathlib.Path, locdata: LocalisationData, reference_language: str):
-    """Write language localisations to files, except the reference language"""
-    output_languages = sorted(lang for lang in locdata.languages if lang != reference_language)
-    logging.info(
-        f"Writing localisation files for languages: {','.join(output_languages)} "
-        f"(ignoring reference language {reference_language!r})"
-    )
-    for lang in output_languages:
-        filepath = loc_dir / f"all_l_{lang}.yml"
-        with open(filepath, "w", encoding="utf-8") as fh:
-            fh.write(f"l_{lang}:\n")
-            for identifier, lang_text_map in locdata.entries.items():
-                if text := lang_text_map[lang]:
-                    text = text.replace('"', '\\"')
-                    fh.write(f' {identifier}:0 "{text}"\n')
+def write_localisation_to_locfile(
+    outfile: pathlib.Path,
+    locdata: LocalisationData,
+):
+    logging.info(f"Writing localisation for language {locdata.language!r} to {str(outfile)!r}")
+    with open(outfile, "w", encoding="utf-8") as fh:
+        fh.write(f"l_{locdata.language}:\n")
+        for identifier, text in locdata.entries.items():
+            if text:
+                text = text.replace('"', '\\"')
+                fh.write(f' {identifier}:0 "{text}"\n')
 
 
-def write_localisation_to_tsv(outpath: pathlib.Path, locdata: LocalisationData, reference_language: str):
-    output_languages = sorted(lang for lang in locdata.languages if lang != reference_language)
+def write_localisation_to_tsv(
+    outpath: pathlib.Path,
+    ref_locdata: LocalisationData,
+    transl_locdata: LocalisationData,
+):
+    identifiers = sorted(set(ref_locdata.entries) | set(transl_locdata.entries))
     with open(outpath, "w", encoding="utf-8") as fh:
         writer = csv.DictWriter(
             fh,
-            fieldnames=["identifier", reference_language, *output_languages],
+            fieldnames=[
+                "identifier",
+                "status",
+                ref_locdata.language,
+                transl_locdata.language,
+            ],
             delimiter="\t",
             lineterminator="\n",
         )
         writer.writeheader()
-        for identifier, lang_text_map in locdata.entries.items():
-            entry_dict = {"identifier": identifier}
-            entry_dict.update(lang_text_map)
+        for (identifier,) in identifiers:
+            entry_dict = {
+                "identifier": identifier,
+                "status": "",
+                ref_locdata.language: ref_locdata.entries[identifier],
+                transl_locdata.language: transl_locdata.entries[identifier],
+            }
             writer.writerow(entry_dict)
