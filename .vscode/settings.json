@@ -16,7 +16,8 @@
     "pylint.args": [
         "--max-line-length=120",
         "--disable=C0111",
-        "--disable=W1203"
+        "--disable=W1203",
+        "--disable=W0511"
     ],
     "gitlens.codeLens.enabled": false,
     "black-formatter.args": [
