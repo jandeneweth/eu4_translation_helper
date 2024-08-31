@@ -1,29 +1,10 @@
-#!/usr/bin/env python3
-"""
-A helper for EU4 translations.
-
-Author: lichtkang
-"""
-
-import sys
-
-if sys.version_info < (3, 9):
-    # Not checked, but safe assumption
-    sys.exit("Needs Python 3.9 or higher")
-
-import argparse
 import collections
 import csv
 import dataclasses
-import datetime
-import json
 import logging
-import os
 import pathlib
 import re
 import typing as t
-
-# -- Localisation parsing --
 
 
 @dataclasses.dataclass
@@ -115,7 +96,7 @@ def parse_localisation_from_locfiles(dirpath: pathlib.Path, exclude_patterns: li
 
 def parse_localisation_from_tsv(filepath: pathlib.Path) -> LocalisationData:
     locdata = LocalisationData()
-    with open(filepath, "r") as fh:
+    with open(filepath, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(
             fh,
             delimiter="\t",
@@ -137,7 +118,7 @@ def write_localisation_to_locfiles(loc_dir: pathlib.Path, locdata: LocalisationD
     )
     for lang in output_languages:
         filepath = loc_dir / f"all_l_{lang}.yml"
-        with open(filepath, "w") as fh:
+        with open(filepath, "w", encoding="utf-8") as fh:
             fh.write(f"l_{lang}:\n")
             for identifier, lang_text_map in locdata.entries.items():
                 if text := lang_text_map[lang]:
@@ -147,7 +128,7 @@ def write_localisation_to_locfiles(loc_dir: pathlib.Path, locdata: LocalisationD
 
 def write_localisation_to_tsv(outpath: pathlib.Path, locdata: LocalisationData, reference_language: str):
     output_languages = sorted(lang for lang in locdata.languages if lang != reference_language)
-    with open(outpath, "w") as fh:
+    with open(outpath, "w", encoding="utf-8") as fh:
         writer = csv.DictWriter(
             fh,
             fieldnames=["identifier", reference_language, *output_languages],
@@ -159,89 +140,3 @@ def write_localisation_to_tsv(outpath: pathlib.Path, locdata: LocalisationData, 
             entry_dict = {"identifier": identifier}
             entry_dict.update(lang_text_map)
             writer.writerow(entry_dict)
-
-
-# -- Execute --
-
-
-def _load_to_tsv(
-    loc_dir: pathlib.Path,
-    tsv_filepath: pathlib.Path,
-    reference_language: str,
-    exclude_patterns: list[str],
-):
-    """Load localisation to TSV file"""
-    if tsv_filepath.exists():
-        raise RuntimeError(
-            f"The TSV file already exists, use the 'flush' flag to flush pending changes "
-            f"to the localisation files first. Filepath: {str(tsv_filepath)!r}"
-        )
-    locdata = parse_localisation_from_locfiles(dirpath=loc_dir, exclude_patterns=exclude_patterns)
-    write_localisation_to_tsv(outpath=tsv_filepath, locdata=locdata, reference_language=reference_language)
-
-
-def _flush_to_localisation(
-    loc_dir: pathlib.Path,
-    tsv_filepath: pathlib.Path,
-    reference_language: str,
-):
-    """Write TSV file to localisation and rename it"""
-    locdata = parse_localisation_from_tsv(filepath=tsv_filepath)
-    write_localisation_to_locfiles(
-        loc_dir=loc_dir,
-        locdata=locdata,
-        reference_language=reference_language,
-    )
-    backup_tsv_filepath = tsv_filepath.parent / f"previous_{tsv_filepath.name}"
-    tsv_filepath.replace(backup_tsv_filepath)
-
-
-def _parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Convert EU4's YAML localisation files to one TSV file for translation, or vice-versa. \n"
-            "The TSV file can be edited in Excel or similar programs, but take care to save as TSV and not an excel-specific format! \n"
-            "Without arguments, loads the localisation to a TSV file. Use the 'flush' flag to write back and backup the TSV (prefixed by 'previous_')."
-            "Quirks specific for translation: \n"
-            "    - Will not overwrite existing TSV files, use 'flush' to flush changes to the localisation files first. \n"
-            "    - Only languages other than the reference language are written to localisation files. \n"
-        ),
-        epilog="Author: lichtkang",
-    )
-    parser.add_argument("--localisation_directory", type=str)
-    parser.add_argument("--tsv_filepath", type=str)
-    parser.add_argument("--reference_language", type=str)
-    parser.add_argument("--exclude", type=str, action="append")
-    parser.add_argument("--flush", action="store_true", help="Flush translations to localisation files")
-    arguments = parser.parse_args()
-    return arguments
-
-
-def main():
-    arguments = _parse_arguments()
-    loc_dir = pathlib.Path(arguments.localisation_directory)
-    tsv_filepath = pathlib.Path(arguments.tsv_filepath)
-    reference_language = arguments.reference_language
-    exclude_patterns = arguments.exclude
-    try:
-        if arguments.flush:
-            _flush_to_localisation(
-                loc_dir=loc_dir,
-                tsv_filepath=tsv_filepath,
-                reference_language=reference_language,
-            )
-        else:
-            _load_to_tsv(
-                loc_dir=loc_dir,
-                tsv_filepath=tsv_filepath,
-                reference_language=reference_language,
-                exclude_patterns=exclude_patterns,
-            )
-    except RuntimeError as e:
-        print(e)
-        sys.exit(1)
-    logging.info("Done!")
-
-
-if __name__ == "__main__":
-    main()
