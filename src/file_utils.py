@@ -115,7 +115,9 @@ def parse_localisation_from_tsv(
         )
         for entry in reader:
             identifier = entry["identifier"]
-            locdata.entries[identifier] = entry[language]
+            text = entry[language]
+            if text:
+                locdata.entries[identifier] = entry[language]
     return locdata
 
 
@@ -151,11 +153,11 @@ def write_localisation_to_tsv(
             lineterminator="\n",
         )
         writer.writeheader()
-        for (identifier,) in identifiers:
+        for identifier in identifiers:
             entry_dict = {
                 "identifier": identifier,
                 "status": "",
-                ref_locdata.language: ref_locdata.entries[identifier],
-                transl_locdata.language: transl_locdata.entries[identifier],
+                ref_locdata.language: ref_locdata.entries.get(identifier, ""),
+                transl_locdata.language: transl_locdata.entries.get(identifier, ""),
             }
             writer.writerow(entry_dict)
