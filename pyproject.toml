@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "eu4-translation-helper"
+version = "1.0.0"
+description = "Translation helper tool for Europa Universalis 4"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE.txt"}
+keywords = ["translation", "eu4"]
+authors = [
+  {name = "Jan Deneweth"}
+]
+
+# For a list of valid classifiers, see https://pypi.org/classifiers/
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: End Users/Desktop",
+  "Topic :: Software Development :: Build Tools",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3 :: Only",
+]
+
+dependencies = [
+  "fastapi[standard]"
+]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.urls]
+"Homepage" = "https://github.com/pypa/sampleproject"
+"Bug Reports" = "https://github.com/pypa/sampleproject/issues"
+"Source" = "https://github.com/pypa/sampleproject/"
