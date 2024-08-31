@@ -38,3 +38,10 @@ test = ["pytest"]
 "Homepage" = "https://github.com/jandeneweth/eu4_translation_helper"
 "Bug Reports" = "https://github.com/jandeneweth/eu4_translation_helper/issues"
 "Source" = "https://github.com/jandeneweth/eu4_translation_helper"
+
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+eu4th = ["templates/*"]

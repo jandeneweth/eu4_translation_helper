@@ -38,12 +38,6 @@ def _parse_arguments() -> argparse.Namespace:
         default="english",
     )
     parser.add_argument(
-        "--tool_dir",
-        type=str,
-        default="./eu4th",
-        help="Tool working directory, saves configuration and intermediate data",
-    )
-    parser.add_argument(
         "--exclude_reference",
         type=str,
         action="append",
@@ -64,18 +58,15 @@ def main():
     transl_fp = pathlib.Path(arguments.translation_filepath).absolute()
     translation_language = arguments.translation_language
     reference_language = arguments.translation_language
-    tool_dir = pathlib.Path(arguments.tool_dir).absolute()
     reference_exclude_patterns = arguments.exclude_reference
     try:
         if arguments.flush:
             flush_to_localisation(
-                tool_dir=tool_dir,
                 transl_fp=transl_fp,
                 translation_language=translation_language,
             )
         else:
             reload_localisation_to_tsv(
-                tool_dir=tool_dir,
                 ref_dir=ref_dir,
                 transl_fp=transl_fp,
                 reference_language=reference_language,

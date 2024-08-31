@@ -7,31 +7,28 @@ import pathlib
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .commands import flush_to_localisation, reload_localisation_to_tsv
 from .config_utils import Config, load_config, save_config
 
-app = FastAPI()
-
+webapp = FastAPI()
 this_dir = pathlib.Path(__file__).parent
-app.mount("/static", StaticFiles(directory=this_dir / "static"), name="static")
 templates = Jinja2Templates(directory=this_dir / "templates")
 
 
-@app.get("/", response_class=HTMLResponse)
+@webapp.get("/", response_class=HTMLResponse)
 async def get_index(request: Request):
     return templates.TemplateResponse(request=request, name="index.html")
 
 
-@app.get("/config", response_class=HTMLResponse)
+@webapp.get("/config", response_class=HTMLResponse)
 async def get_config(request: Request):
     config = load_config()
     return templates.TemplateResponse(request=request, name="config.html.j2", context={"config": config})
 
 
-@app.post("/config", response_class=HTMLResponse)
+@webapp.post("/config", response_class=HTMLResponse)
 async def post_config(request: Request):
     formdata = await request.form()
     config = Config(
@@ -44,7 +41,7 @@ async def post_config(request: Request):
     return templates.TemplateResponse(request=request, name="config.html.j2", context={"config": config})
 
 
-@app.post("/reload_localisations", response_class=HTMLResponse)
+@webapp.post("/reload_localisations", response_class=HTMLResponse)
 async def post_reload_localisation():
     config = load_config()
     try:
@@ -63,7 +60,7 @@ async def post_reload_localisation():
     return HTMLResponse(content=content)
 
 
-@app.post("/flush_translations", response_class=HTMLResponse)
+@webapp.post("/flush_translations", response_class=HTMLResponse)
 async def post_flush_translations():
     config = load_config()
     try:
