@@ -33,6 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest"]
+build = ["pyinstaller"]
 
 [project.urls]
 "Homepage" = "https://github.com/jandeneweth/eu4_translation_helper"
