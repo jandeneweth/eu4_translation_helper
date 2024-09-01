@@ -5,9 +5,7 @@ a = Analysis(
     ['src/eu4th/__main__.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ("src/eu4th/templates/*", "templates")
-    ],
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -31,7 +29,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

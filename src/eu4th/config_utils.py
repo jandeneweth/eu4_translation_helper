@@ -19,10 +19,11 @@ class Config:
 def save_config(config: Config):
     logging.info(f"Saving config to {str(CONFIG_PATH)!r}")
     config_dict = {
-        "reference_directory": config.reference_directory,
+        "reference_directory": str(config.reference_directory),
         "reference_language": config.reference_language,
-        "translation_filepath": config.translation_filepath,
+        "translation_filepath": str(config.translation_filepath),
         "translation_language": config.translation_language,
+        "exclude_references": config.exclude_references,
     }
     CONFIG_PATH.parent.mkdir(exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as fh:
@@ -41,12 +42,14 @@ def load_config() -> Config:
         config_dict = json.loads(content)
     except json.JSONDecodeError as e:
         logging.warning(f"Error loading config: {e}")
+        return Config()
     try:
         return Config(
             reference_directory=pathlib.Path(config_dict["reference_directory"]),
             reference_language=config_dict["reference_language"],
             translation_filepath=pathlib.Path(config_dict["translation_filepath"]),
             translation_language=config_dict["translation_language"],
+            exclude_references=config_dict.get("exclude_references", []),
         )
     except ValueError as e:
         logging.warning(f"Error loading config: {e}")
