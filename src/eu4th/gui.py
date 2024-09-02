@@ -6,6 +6,7 @@ from tkinter import messagebox, ttk
 
 from eu4th.commands import flush_to_localisation, reload_localisation_to_tsv
 from eu4th.config_utils import Config, load_config, save_config
+from eu4th.gui_helpers import PlaceholderEntry
 
 
 class Gui:
@@ -25,25 +26,28 @@ class Gui:
         mainframe.columnconfigure(1, weight=1)
 
         # Create the input fields
-        ttk.Label(mainframe, text="Reference directory").grid(column=0, row=0, sticky=tk.W)
-        self.reference_directory = tk.StringVar()
-        reference_directory_entry = ttk.Entry(mainframe, width=60, textvariable=self.reference_directory)
-        reference_directory_entry.grid(column=1, row=0, sticky=(tk.W, tk.E))
-
-        ttk.Label(mainframe, text="Reference language").grid(column=0, row=1, sticky=tk.W)
+        ttk.Label(mainframe, text="Reference language").grid(column=0, row=0, sticky=tk.W)
         self.reference_language = tk.StringVar()
         reference_language_entry = ttk.Entry(mainframe, width=60, textvariable=self.reference_language)
-        reference_language_entry.grid(column=1, row=1, sticky=(tk.W, tk.E))
+        reference_language_entry.grid(column=1, row=0, sticky=(tk.W, tk.E))
 
-        ttk.Label(mainframe, text="Translation filepath").grid(column=0, row=2, sticky=tk.W)
-        self.translation_filepath = tk.StringVar()
-        translation_filepath_entry = ttk.Entry(mainframe, width=60, textvariable=self.translation_filepath)
-        translation_filepath_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
+        ttk.Label(mainframe, text="Reference directory").grid(column=0, row=1, sticky=tk.W)
+        self.reference_directory = tk.StringVar()
+        reference_directory_entry = ttk.Entry(mainframe, width=60, textvariable=self.reference_directory)
+        reference_directory_entry.grid(column=1, row=1, sticky=(tk.W, tk.E))
 
-        ttk.Label(mainframe, text="Translation language").grid(column=0, row=3, sticky=tk.W)
+        ttk.Label(mainframe, text="Translation language").grid(column=0, row=2, sticky=tk.W)
         self.translation_language = tk.StringVar()
         translation_language_entry = ttk.Entry(mainframe, width=60, textvariable=self.translation_language)
-        translation_language_entry.grid(column=1, row=3, sticky=(tk.W, tk.E))
+        translation_language_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
+        self.translation_language.trace_add("write", lambda x, y, z: self._update_translation_file_placeholder())
+
+        ttk.Label(mainframe, text="Translation filepath").grid(column=0, row=3, sticky=tk.W)
+        self.translation_filepath = tk.StringVar()
+        self.translation_filepath_entry = PlaceholderEntry(
+            mainframe, placeholder="translations_l_<language>.yml", width=60, textvariable=self.translation_filepath
+        )
+        self.translation_filepath_entry.grid(column=1, row=3, sticky=(tk.W, tk.E))
 
         # Create the action buttons
         load_localisation_button = ttk.Button(mainframe, text="Save configuration", command=self._save_config)
@@ -82,6 +86,7 @@ class Gui:
     def _save_config(self):
         save_config(config=self.config)
         messagebox.showinfo(title="Results", message="Configuration saved")
+        self.config = load_config()
 
     def _load_localisation(self):
         feedback = reload_localisation_to_tsv(
@@ -107,6 +112,10 @@ class Gui:
         else:
             message = traceback.format_exception(exc, val, tb)
         messagebox.showerror(title="Error", message=message)
+
+    def _update_translation_file_placeholder(self):
+        language = self.translation_language.get()
+        self.translation_filepath_entry.set_placeholder(f"translations_l_{language}.yml")
 
 
 def run():
