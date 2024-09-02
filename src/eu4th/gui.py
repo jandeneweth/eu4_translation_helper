@@ -17,39 +17,41 @@ class Gui:
         root.title("EU4 Translation Helper")
 
         # Create the frame and configure the grid
+        root.minsize(width=400, height=260)
         mainframe = ttk.Frame(root, padding="3 3 12 12")
         mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
+        mainframe.columnconfigure(1, weight=1)
 
         # Create the input fields
-        ttk.Label(mainframe, text="Reference directory").grid(column=1, row=1, sticky=tk.W)
+        ttk.Label(mainframe, text="Reference directory").grid(column=0, row=0, sticky=tk.W)
         self.reference_directory = tk.StringVar()
-        reference_directory_entry = ttk.Entry(mainframe, width=40, textvariable=self.reference_directory)
-        reference_directory_entry.grid(column=2, row=1, sticky=(tk.W, tk.E))
+        reference_directory_entry = ttk.Entry(mainframe, width=60, textvariable=self.reference_directory)
+        reference_directory_entry.grid(column=1, row=0, sticky=(tk.W, tk.E))
 
-        ttk.Label(mainframe, text="Reference language").grid(column=1, row=2, sticky=tk.W)
+        ttk.Label(mainframe, text="Reference language").grid(column=0, row=1, sticky=tk.W)
         self.reference_language = tk.StringVar()
-        reference_language_entry = ttk.Entry(mainframe, width=40, textvariable=self.reference_language)
-        reference_language_entry.grid(column=2, row=2, sticky=(tk.W, tk.E))
+        reference_language_entry = ttk.Entry(mainframe, width=60, textvariable=self.reference_language)
+        reference_language_entry.grid(column=1, row=1, sticky=(tk.W, tk.E))
 
-        ttk.Label(mainframe, text="Translation filepath").grid(column=1, row=3, sticky=tk.W)
+        ttk.Label(mainframe, text="Translation filepath").grid(column=0, row=2, sticky=tk.W)
         self.translation_filepath = tk.StringVar()
-        translation_filepath_entry = ttk.Entry(mainframe, width=40, textvariable=self.translation_filepath)
-        translation_filepath_entry.grid(column=2, row=3, sticky=(tk.W, tk.E))
+        translation_filepath_entry = ttk.Entry(mainframe, width=60, textvariable=self.translation_filepath)
+        translation_filepath_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
 
-        ttk.Label(mainframe, text="Translation language").grid(column=1, row=4, sticky=tk.W)
+        ttk.Label(mainframe, text="Translation language").grid(column=0, row=3, sticky=tk.W)
         self.translation_language = tk.StringVar()
-        translation_language_entry = ttk.Entry(mainframe, width=40, textvariable=self.translation_language)
-        translation_language_entry.grid(column=2, row=4, sticky=(tk.W, tk.E))
+        translation_language_entry = ttk.Entry(mainframe, width=60, textvariable=self.translation_language)
+        translation_language_entry.grid(column=1, row=3, sticky=(tk.W, tk.E))
 
         # Create the action buttons
         load_localisation_button = ttk.Button(mainframe, text="Save configuration", command=self._save_config)
-        load_localisation_button.grid(column=2, row=5, sticky=tk.W)
+        load_localisation_button.grid(column=1, row=4, sticky=tk.W)
         load_localisation_button = ttk.Button(mainframe, text="Load localisations", command=self._load_localisation)
-        load_localisation_button.grid(column=2, row=6, sticky=tk.W)
+        load_localisation_button.grid(column=1, row=5, sticky=tk.W)
         flush_translations_button = ttk.Button(mainframe, text="Flush translations", command=self._flush_translations)
-        flush_translations_button.grid(column=2, row=7, sticky=tk.W)
+        flush_translations_button.grid(column=1, row=6, sticky=tk.W)
 
         # Add padding to all widgets
         for child in mainframe.winfo_children():
