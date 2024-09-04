@@ -6,7 +6,8 @@ from tkinter import messagebox, ttk
 
 from eu4th.commands import flush_to_localisation, reload_localisation_to_tsv
 from eu4th.config_utils import Config, load_config, save_config
-from eu4th.gui_helpers import PlaceholderEntry
+from eu4th.defines import TSV_FILEPATH
+from eu4th.gui_helpers import PlaceholderEntry, open_with_filetype_default
 
 
 class Gui:
@@ -42,7 +43,7 @@ class Gui:
         translation_language_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
         self.translation_language.trace_add("write", lambda x, y, z: self._update_translation_file_placeholder())
 
-        ttk.Label(mainframe, text="Translation filepath").grid(column=0, row=3, sticky=tk.W)
+        ttk.Label(mainframe, text="Translation output").grid(column=0, row=3, sticky=tk.W)
         self.translation_filepath = tk.StringVar()
         self.translation_filepath_entry = PlaceholderEntry(
             mainframe, placeholder="translations_l_<language>.yml", width=60, textvariable=self.translation_filepath
@@ -54,8 +55,10 @@ class Gui:
         load_localisation_button.grid(column=1, row=4, sticky=tk.W)
         load_localisation_button = ttk.Button(mainframe, text="Load localisations", command=self._load_localisation)
         load_localisation_button.grid(column=1, row=5, sticky=tk.W)
+        load_localisation_button = ttk.Button(mainframe, text="Open translations", command=self._open_translations)
+        load_localisation_button.grid(column=1, row=6, sticky=tk.W)
         flush_translations_button = ttk.Button(mainframe, text="Flush translations", command=self._flush_translations)
-        flush_translations_button.grid(column=1, row=6, sticky=tk.W)
+        flush_translations_button.grid(column=1, row=7, sticky=tk.W)
 
         # Add padding to all widgets
         for child in mainframe.winfo_children():
@@ -97,6 +100,9 @@ class Gui:
             reference_exclude_patterns=self.config.exclude_references,
         )
         messagebox.showinfo(title="Results", message=feedback)
+
+    def _open_translations(self):
+        open_with_filetype_default(TSV_FILEPATH)
 
     def _flush_translations(self):
         feedback = flush_to_localisation(

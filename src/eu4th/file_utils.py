@@ -1,34 +1,9 @@
 import csv
-import dataclasses
 import logging
 import pathlib
 import re
-import typing as t
 
-
-@dataclasses.dataclass
-class LocLine:
-    identifier: str
-    text: str
-
-
-@dataclasses.dataclass
-class LocFile:
-    sourcefile: pathlib.Path
-    language: str
-    lines: list[LocLine]
-
-
-LocId: t.TypeAlias = str
-LangId: t.TypeAlias = str
-Text: t.TypeAlias = str
-
-
-@dataclasses.dataclass
-class LocalisationData:
-    language: str
-    entries: dict[LocId, Text] = dataclasses.field(default_factory=dict)
-
+from .models import LocalisationData, LocFile, LocLine
 
 _LOC_LANG_RE = re.compile(r"^l_([a-z]+):$")
 _LOC_SEPARATOR_RE = re.compile(r":[0-9]")
@@ -38,7 +13,7 @@ def _load_loc_from_file(
     filepath: pathlib.Path,
     language: str,
 ) -> LocFile | None:
-    logging.info(f"Parsing {str(filepath)!r}")
+    logging.info(f"Parsing locfile {str(filepath)!r}")
     lines = []
     with open(filepath, "r", encoding="utf-8-sig") as fh:
         # Get the language
@@ -77,6 +52,7 @@ def _merge_localisations(
     locfiles: list[LocFile],
     language: str,
 ) -> LocalisationData:
+    logging.info("Merging localisations")
     locdata = LocalisationData(language=language)
     for locfile in locfiles:
         if locfile.language != locdata.language:
@@ -107,6 +83,7 @@ def parse_localisation_from_tsv(
     filepath: pathlib.Path,
     language: str,
 ) -> LocalisationData:
+    logging.info(f"Parsing TSV {str(filepath)!r}")
     locdata = LocalisationData(language=language)
     with open(filepath, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(
@@ -115,9 +92,9 @@ def parse_localisation_from_tsv(
         )
         for entry in reader:
             identifier = entry["identifier"]
-            text = entry[language]
+            text = entry.get(language)
             if text:
-                locdata.entries[identifier] = entry[language]
+                locdata.entries[identifier] = text
     return locdata
 
 

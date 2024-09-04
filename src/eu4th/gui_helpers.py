@@ -1,3 +1,7 @@
+import os
+import pathlib
+import platform
+import subprocess
 import tkinter as tk
 
 
@@ -50,3 +54,17 @@ class PlaceholderEntry(tk.Entry):
         else:
             self.config(fg=self.fg)
             self._has_placeholder = False
+
+
+def open_with_filetype_default(target: pathlib.Path):
+    # Based on https://www.reddit.com/r/Tkinter/comments/1d66073/comment/l6vfitz
+    if os.name in ["nt", "ce"]:
+        # Windows
+        # pylint: disable=no-member
+        os.startfile(os.path.normpath(target))
+    elif "darwin" in platform.system().casefold():
+        # MacOS
+        subprocess.run(["open", str(target)], check=False)
+    else:
+        # Assume linux
+        subprocess.run(["xdg-open", str(target)], check=False)
