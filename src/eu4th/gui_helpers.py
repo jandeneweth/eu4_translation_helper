@@ -58,13 +58,18 @@ class PlaceholderEntry(tk.Entry):
 
 def open_with_filetype_default(target: pathlib.Path):
     # Based on https://www.reddit.com/r/Tkinter/comments/1d66073/comment/l6vfitz
-    if os.name in ["nt", "ce"]:
-        # Windows
-        # pylint: disable=no-member
-        os.startfile(os.path.normpath(target))
-    elif "darwin" in platform.system().casefold():
-        # MacOS
-        subprocess.run(["open", str(target)], check=False)
-    else:
-        # Assume linux
-        subprocess.run(["xdg-open", str(target)], check=False)
+    if not os.path.exists(target):
+        raise RuntimeError(f"Target does not exist: {target!r}")
+    try:
+        if os.name in ["nt", "ce"]:
+            # Windows
+            # pylint: disable=no-member
+            os.startfile(os.path.normpath(target))
+        elif "darwin" in platform.system().casefold():
+            # MacOS
+            subprocess.run(["open", str(target)], check=True)
+        else:
+            # Assume linux
+            subprocess.run(["xdg-open", str(target)], check=True)
+    except Exception as e:
+        raise RuntimeError(f"Could not open {target!r}: {e} ({type(e)})") from e

@@ -36,29 +36,50 @@ class Gui:
         self.reference_directory = tk.StringVar()
         reference_directory_entry = ttk.Entry(mainframe, width=60, textvariable=self.reference_directory)
         reference_directory_entry.grid(column=1, row=1, sticky=(tk.W, tk.E))
+        open_reference_directory_button = ttk.Button(
+            mainframe,
+            text="Open...",
+            command=lambda: open_with_filetype_default(self.reference_directory.get()),
+        )
+        open_reference_directory_button.grid(column=2, row=1, sticky=tk.W)
+        load_localisation_button = ttk.Button(mainframe, text="Load localisations", command=self._load_localisation)
+        load_localisation_button.grid(column=3, row=1, sticky=tk.W)
 
-        ttk.Label(mainframe, text="Translation language").grid(column=0, row=2, sticky=tk.W)
+        ttk.Label(mainframe, text="Translation table").grid(column=0, row=2, sticky=tk.W)
+        self.translation_filepath = tk.StringVar()
+        self.translation_filepath_entry = ttk.Label(mainframe, text=TSV_FILEPATH)
+        self.translation_filepath_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
+        open_translations_button = ttk.Button(
+            mainframe,
+            text="Open...",
+            command=lambda: open_with_filetype_default(TSV_FILEPATH),
+        )
+        open_translations_button.grid(column=2, row=2, sticky=tk.W)
+
+        ttk.Label(mainframe, text="Translation language").grid(column=0, row=3, sticky=tk.W)
         self.translation_language = tk.StringVar()
         translation_language_entry = ttk.Entry(mainframe, width=60, textvariable=self.translation_language)
-        translation_language_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
+        translation_language_entry.grid(column=1, row=3, sticky=(tk.W, tk.E))
         self.translation_language.trace_add("write", lambda x, y, z: self._update_translation_file_placeholder())
 
-        ttk.Label(mainframe, text="Translation output").grid(column=0, row=3, sticky=tk.W)
+        ttk.Label(mainframe, text="Translation output").grid(column=0, row=4, sticky=tk.W)
         self.translation_filepath = tk.StringVar()
         self.translation_filepath_entry = PlaceholderEntry(
             mainframe, placeholder="translations_l_<language>.yml", width=60, textvariable=self.translation_filepath
         )
-        self.translation_filepath_entry.grid(column=1, row=3, sticky=(tk.W, tk.E))
+        self.translation_filepath_entry.grid(column=1, row=4, sticky=(tk.W, tk.E))
+        open_translation_filepath_button = ttk.Button(
+            mainframe,
+            text="Open...",
+            command=lambda: open_with_filetype_default(self.translation_filepath.get()),
+        )
+        open_translation_filepath_button.grid(column=2, row=4, sticky=tk.W)
+        flush_translations_button = ttk.Button(mainframe, text="Flush translations", command=self._flush_translations)
+        flush_translations_button.grid(column=3, row=4, sticky=tk.W)
 
         # Create the action buttons
-        load_localisation_button = ttk.Button(mainframe, text="Save configuration", command=self._save_config)
-        load_localisation_button.grid(column=1, row=4, sticky=tk.W)
-        load_localisation_button = ttk.Button(mainframe, text="Load localisations", command=self._load_localisation)
-        load_localisation_button.grid(column=1, row=5, sticky=tk.W)
-        load_localisation_button = ttk.Button(mainframe, text="Open translations", command=self._open_translations)
-        load_localisation_button.grid(column=1, row=6, sticky=tk.W)
-        flush_translations_button = ttk.Button(mainframe, text="Flush translations", command=self._flush_translations)
-        flush_translations_button.grid(column=1, row=7, sticky=tk.W)
+        save_config_button = ttk.Button(mainframe, text="Save configuration", command=self._save_config)
+        save_config_button.grid(column=1, row=5, sticky=tk.W)
 
         # Add padding to all widgets
         for child in mainframe.winfo_children():
@@ -95,26 +116,19 @@ class Gui:
         feedback = reload_localisation_to_tsv(
             ref_dir=self.config.reference_directory,
             reference_language=self.config.reference_language,
-            transl_fp=self.config.translation_filepath,
             translation_language=self.config.translation_language,
             reference_exclude_patterns=self.config.exclude_references,
         )
         messagebox.showinfo(title="Results", message=feedback)
 
-    def _open_translations(self):
-        open_with_filetype_default(TSV_FILEPATH)
-
     def _flush_translations(self):
-        feedback = flush_to_localisation(
-            transl_fp=self.config.translation_filepath,
-            translation_language=self.config.translation_language,
-        )
+        feedback = flush_to_localisation(transl_fp=self.config.translation_filepath)
         messagebox.showinfo(title="Results", message=feedback)
 
     def _handle_exception(self, exc, val, tb):
-        logging.exception(exc)
-        if isinstance(exc, RuntimeError):
-            message = str(exc)
+        logging.exception(val)
+        if isinstance(val, RuntimeError):
+            message = str(val)
         else:
             message = traceback.format_exception(exc, val, tb)
         messagebox.showerror(title="Error", message=message)

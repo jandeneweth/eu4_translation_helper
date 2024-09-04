@@ -1,12 +1,26 @@
 import csv
+import dataclasses
 import logging
 import pathlib
 import re
 
-from .models import LocalisationData, LocFile, LocLine
+from .models import LocalisationData, LocFile, LocLine, Text, TranslationData, TranslationEntry, TranslationStatus
 
 _LOC_LANG_RE = re.compile(r"^l_([a-z]+):$")
 _LOC_SEPARATOR_RE = re.compile(r":[0-9]")
+
+
+@dataclasses.dataclass
+class ReloadStats:
+    new: int
+    changed: int
+    deleted: int
+
+    outdated_translations: int
+
+    @property
+    def all(self) -> int:
+        return self.new + self.changed + self.deleted
 
 
 def _load_loc_from_file(
@@ -76,65 +90,133 @@ def parse_localisation_from_locfiles(
         locfile = _load_loc_from_file(filepath=filepath, language=language)
         if locfile is not None:
             locfiles.append(locfile)
-    return _merge_localisations(locfiles=locfiles, language=language)
+    return _merge_localisations(
+        locfiles=locfiles,
+        language=language,
+    )
 
 
-def parse_localisation_from_tsv(
-    filepath: pathlib.Path,
-    language: str,
-) -> LocalisationData:
+def parse_translations_from_tsv(filepath: pathlib.Path) -> TranslationData:
     logging.info(f"Parsing TSV {str(filepath)!r}")
-    locdata = LocalisationData(language=language)
     with open(filepath, "r", encoding="utf-8") as fh:
         reader = csv.DictReader(
             fh,
             delimiter="\t",
         )
+        _id_field, status_field, reference_language, translation_language = reader.fieldnames
+        locdata = TranslationData(
+            reference_language=reference_language,
+            translation_language=translation_language,
+        )
         for entry in reader:
             identifier = entry["identifier"]
-            text = entry.get(language)
-            if text:
-                locdata.entries[identifier] = text
+            reference = entry.get(reference_language)
+            translation = entry.get(translation_language)
+            status = TranslationStatus(
+                entry.get(status_field)
+                or (TranslationStatus.DONE.value if translation else TranslationStatus.MISSING.value)
+            )
+            locdata.entries[identifier] = TranslationEntry(
+                reference=reference,
+                translation=translation,
+                status=status,
+            )
     return locdata
 
 
 def write_localisation_to_locfile(
     outfile: pathlib.Path,
-    locdata: LocalisationData,
-):
+    locdata: TranslationData,
+) -> int:
     logging.info(f"Writing localisation for language {locdata.language!r} to {str(outfile)!r}")
+    written = 0
     with open(outfile, "w", encoding="utf-8") as fh:
         fh.write(f"l_{locdata.language}:\n")
         for identifier, text in locdata.entries.items():
             if text:
                 text = text.replace('"', '\\"')
                 fh.write(f' {identifier}:0 "{text}"\n')
+                written += 1
+    return written
 
 
-def write_localisation_to_tsv(
+def write_translations_to_tsv(
     outpath: pathlib.Path,
-    ref_locdata: LocalisationData,
-    transl_locdata: LocalisationData,
+    translation_data: TranslationData,
 ):
-    identifiers = sorted(set(ref_locdata.entries) | set(transl_locdata.entries))
     with open(outpath, "w", encoding="utf-8") as fh:
         writer = csv.DictWriter(
             fh,
             fieldnames=[
                 "identifier",
-                "status",
-                ref_locdata.language,
-                transl_locdata.language,
+                "translation_status",
+                translation_data.reference_language,
+                translation_data.translation_language,
             ],
             delimiter="\t",
             lineterminator="\n",
         )
         writer.writeheader()
-        for identifier in identifiers:
+        for locid, entry in translation_data.entries.items():
             entry_dict = {
-                "identifier": identifier,
-                "status": "",
-                ref_locdata.language: ref_locdata.entries.get(identifier, ""),
-                transl_locdata.language: transl_locdata.entries.get(identifier, ""),
+                "identifier": locid,
+                "translation_status": entry.status.value if entry.status is TranslationStatus.OUTDATED else "",
+                translation_data.reference_language: entry.reference,
+                translation_data.translation_language: entry.translation,
             }
             writer.writerow(entry_dict)
+
+
+def merge_latest_references_into_translations(
+    known_translations: TranslationData,
+    latest_locdata: LocalisationData,
+) -> tuple[TranslationData, ReloadStats]:
+    updated_translations = TranslationData(
+        reference_language=known_translations.reference_language,
+        translation_language=known_translations.translation_language,
+    )
+    all_locids = known_translations.entries.keys() | latest_locdata.entries.keys()
+    stats = ReloadStats(0, 0, 0, 0)
+    for locid in all_locids:
+        latest_reference = latest_locdata.entries.get(locid, "")
+        current_entry = known_translations.entries.get(locid, TranslationEntry("", "", TranslationStatus.MISSING))
+        new_status = _determine_status(
+            current_status=current_entry.status,
+            prev_reference=current_entry.reference,
+            new_reference=latest_reference,
+        )
+        updated_translations.entries[locid] = TranslationEntry(
+            reference=latest_reference,
+            translation=current_entry.translation,
+            status=new_status,
+        )
+        if locid not in latest_locdata.entries:
+            stats.deleted += 1
+        elif locid not in known_translations.entries:
+            stats.new += 1
+        elif latest_reference != current_entry.reference:
+            stats.changed += 1
+        if new_status != current_entry.status:
+            stats.outdated_translations += 1
+    return updated_translations, stats
+
+
+def _determine_status(
+    current_status: TranslationStatus,
+    prev_reference: Text,
+    new_reference: Text,
+) -> TranslationStatus:
+    if current_status is TranslationStatus.DONE:
+        if prev_reference == new_reference:
+            return TranslationStatus.DONE
+        else:
+            return TranslationStatus.OUTDATED
+    else:
+        return current_status
+
+
+def get_localisation_from_translations(translation_data: TranslationData) -> LocalisationData:
+    locdata = LocalisationData(language=translation_data.translation_language)
+    for locid, entry in translation_data.entries.items():
+        locdata.entries[locid] = entry.translation
+    return locdata
