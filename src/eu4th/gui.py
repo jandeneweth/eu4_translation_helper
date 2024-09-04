@@ -6,7 +6,7 @@ from tkinter import messagebox, ttk
 
 from eu4th.commands import flush_to_localisation, reload_localisation_to_tsv
 from eu4th.config_utils import Config, load_config, save_config
-from eu4th.defines import TSV_FILEPATH
+from eu4th.defines import EU4TH_DIR, EXCEL_FILEPATH
 from eu4th.gui_helpers import PlaceholderEntry, open_with_filetype_default
 
 
@@ -47,12 +47,12 @@ class Gui:
 
         ttk.Label(mainframe, text="Translation table").grid(column=0, row=2, sticky=tk.W)
         self.translation_filepath = tk.StringVar()
-        self.translation_filepath_entry = ttk.Label(mainframe, text=TSV_FILEPATH)
+        self.translation_filepath_entry = ttk.Label(mainframe, text=EXCEL_FILEPATH)
         self.translation_filepath_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
         open_translations_button = ttk.Button(
             mainframe,
             text="Open...",
-            command=lambda: open_with_filetype_default(TSV_FILEPATH),
+            command=lambda: open_with_filetype_default(EXCEL_FILEPATH),
         )
         open_translations_button.grid(column=2, row=2, sticky=tk.W)
 
@@ -135,7 +135,7 @@ class Gui:
 
     def _update_translation_file_placeholder(self):
         language = self.translation_language.get()
-        self.translation_filepath_entry.set_placeholder(f"translations_l_{language}.yml")
+        self.translation_filepath_entry.set_placeholder(str(EU4TH_DIR / f"translations_l_{language}.yml"))
 
 
 def run():

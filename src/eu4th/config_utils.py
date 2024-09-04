@@ -3,13 +3,13 @@ import json
 import logging
 import pathlib
 
-from .defines import CONFIG_PATH, DEFAULT_TRANSLATIONS_FILEPATH, EU4TH_DIR
+from .defines import CONFIG_PATH, EU4TH_DIR
 
 
 @dataclasses.dataclass
 class Config:
     reference_directory: pathlib.Path = pathlib.Path("")
-    translation_filepath: pathlib.Path = DEFAULT_TRANSLATIONS_FILEPATH
+    translation_filepath: pathlib.Path = ""
     translation_language: str = ""
     reference_language: str = "english"
     tool_dir: pathlib.Path = pathlib.Path(EU4TH_DIR)

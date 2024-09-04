@@ -4,6 +4,10 @@ import logging
 import pathlib
 import re
 
+import openpyxl
+import openpyxl.worksheet
+import openpyxl.worksheet.worksheet
+
 from .models import LocalisationData, LocFile, LocLine, Text, TranslationData, TranslationEntry, TranslationStatus
 
 _LOC_LANG_RE = re.compile(r"^l_([a-z]+):$")
@@ -96,31 +100,29 @@ def parse_localisation_from_locfiles(
     )
 
 
-def parse_translations_from_tsv(filepath: pathlib.Path) -> TranslationData:
-    logging.info(f"Parsing TSV {str(filepath)!r}")
-    with open(filepath, "r", encoding="utf-8") as fh:
-        reader = csv.DictReader(
-            fh,
-            delimiter="\t",
+def parse_translations_from_excel(filepath: pathlib.Path) -> TranslationData:
+    logging.info(f"Parsing Excel {str(filepath)!r}")
+    wb = openpyxl.load_workbook(filepath)
+    ws: openpyxl.worksheet.worksheet.Worksheet = wb["translations"]
+    # Read header
+    translation_language = ws.cell(row=1, column=3).value
+    reference_language = ws.cell(row=1, column=4).value
+    locdata = TranslationData(
+        reference_language=reference_language,
+        translation_language=translation_language,
+    )
+    # Read rows
+    for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=4, values_only=True):
+        values = [str(v or "") for v in row]  # ENsure all are strings
+        identifier, raw_status, translation, reference = values
+        status = TranslationStatus(
+            raw_status or (TranslationStatus.DONE.value if translation else TranslationStatus.MISSING.value)
         )
-        _id_field, status_field, reference_language, translation_language = reader.fieldnames
-        locdata = TranslationData(
-            reference_language=reference_language,
-            translation_language=translation_language,
+        locdata.entries[identifier] = TranslationEntry(
+            reference=reference,
+            translation=translation,
+            status=status,
         )
-        for entry in reader:
-            identifier = entry["identifier"]
-            reference = entry.get(reference_language)
-            translation = entry.get(translation_language)
-            status = TranslationStatus(
-                entry.get(status_field)
-                or (TranslationStatus.DONE.value if translation else TranslationStatus.MISSING.value)
-            )
-            locdata.entries[identifier] = TranslationEntry(
-                reference=reference,
-                translation=translation,
-                status=status,
-            )
     return locdata
 
 
@@ -140,31 +142,36 @@ def write_localisation_to_locfile(
     return written
 
 
-def write_translations_to_tsv(
+def write_translations_to_excel(
     outpath: pathlib.Path,
     translation_data: TranslationData,
 ):
-    with open(outpath, "w", encoding="utf-8") as fh:
-        writer = csv.DictWriter(
-            fh,
-            fieldnames=[
-                "identifier",
-                "translation_status",
-                translation_data.reference_language,
-                translation_data.translation_language,
-            ],
-            delimiter="\t",
-            lineterminator="\n",
-        )
-        writer.writeheader()
-        for locid, entry in translation_data.entries.items():
-            entry_dict = {
-                "identifier": locid,
-                "translation_status": entry.status.value if entry.status is TranslationStatus.OUTDATED else "",
-                translation_data.reference_language: entry.reference,
-                translation_data.translation_language: entry.translation,
-            }
-            writer.writerow(entry_dict)
+    if outpath.exists():
+        wb = openpyxl.load_workbook(outpath, data_only=True)
+    else:
+        wb = openpyxl.Workbook()
+    for sheetname in wb.sheetnames:
+        del wb[sheetname]
+    ws: openpyxl.worksheet.worksheet.Worksheet = wb.create_sheet(title="translations")
+    # Create header row
+    for colnr, colname in enumerate(
+        [
+            "identifier",
+            "translation_status",
+            translation_data.translation_language,
+            translation_data.reference_language,
+        ],
+        start=1,
+    ):
+        ws.cell(row=1, column=colnr, value=colname)
+    # Write translations
+    for rownr, (locid, entry) in enumerate(translation_data.entries.items(), start=2):
+        status = entry.status.value if entry.status is TranslationStatus.OUTDATED else ""
+        ws.cell(row=rownr, column=1, value=locid)
+        ws.cell(row=rownr, column=2, value=status)
+        ws.cell(row=rownr, column=3, value=entry.translation)
+        ws.cell(row=rownr, column=4, value=entry.reference)
+    wb.save(outpath)
 
 
 def merge_latest_references_into_translations(

@@ -26,7 +26,9 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 
-dependencies = []
+dependencies = [
+  "openpyxl>=3.1"
+]
 
 [project.optional-dependencies]
 test = ["pytest"]

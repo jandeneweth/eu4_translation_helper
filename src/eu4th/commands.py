@@ -2,14 +2,14 @@ import logging
 import pathlib
 import re
 
-from .defines import TSV_FILEPATH
+from .defines import EXCEL_FILEPATH
 from .file_utils import (
     get_localisation_from_translations,
     merge_latest_references_into_translations,
     parse_localisation_from_locfiles,
-    parse_translations_from_tsv,
+    parse_translations_from_excel,
     write_localisation_to_locfile,
-    write_translations_to_tsv,
+    write_translations_to_excel,
 )
 from .models import TranslationData
 
@@ -34,8 +34,8 @@ def reload_localisation_to_tsv(
         language=reference_language,
     )
     # Get translaton data
-    if TSV_FILEPATH.exists():
-        translation_data = parse_translations_from_tsv(filepath=TSV_FILEPATH)
+    if EXCEL_FILEPATH.exists():
+        translation_data = parse_translations_from_excel(filepath=EXCEL_FILEPATH)
         if translation_data.reference_language != reference_language:
             raise RuntimeError(
                 f"Reference language does not match: {reference_language!r} "
@@ -57,8 +57,8 @@ def reload_localisation_to_tsv(
         latest_locdata=ref_locdata,
     )
     # Update TSV file
-    write_translations_to_tsv(
-        outpath=TSV_FILEPATH,
+    write_translations_to_excel(
+        outpath=EXCEL_FILEPATH,
         translation_data=translation_data,
     )
     info = f"Loaded {len(ref_locdata.entries)} references: "
@@ -74,9 +74,11 @@ def reload_localisation_to_tsv(
 
 
 def flush_to_localisation(transl_fp: pathlib.Path):
-    if not TSV_FILEPATH.exists():
-        raise RuntimeError(f"The TSV file does not yet exist, load localisation first (path {str(TSV_FILEPATH)!r})")
-    translation_data = parse_translations_from_tsv(filepath=TSV_FILEPATH)
+    if not EXCEL_FILEPATH.exists():
+        raise RuntimeError(
+            f"The translation table does not yet exist, load localisation first (path {str(EXCEL_FILEPATH)!r})"
+        )
+    translation_data = parse_translations_from_excel(filepath=EXCEL_FILEPATH)
     locdata = get_localisation_from_translations(translation_data=translation_data)
     written = write_localisation_to_locfile(
         outfile=transl_fp,
