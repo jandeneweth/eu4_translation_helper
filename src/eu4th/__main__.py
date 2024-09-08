@@ -1,4 +1,4 @@
-from eu4th import gui
+from eu4th.gui import main
 
 if __name__ == "__main__":
-    gui.run()
+    main.run()

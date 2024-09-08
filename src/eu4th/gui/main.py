@@ -7,23 +7,23 @@ from tkinter import messagebox, ttk
 from eu4th.commands import flush_to_localisation, reload_localisation_to_tsv
 from eu4th.config_utils import Config, load_config, save_config
 from eu4th.defines import EU4TH_DIR, EXCEL_FILEPATH
-from eu4th.gui_helpers import PlaceholderEntry, open_with_filetype_default
+from eu4th.gui.gui_helpers import PlaceholderEntry, open_with_filetype_default
 
 
-class Gui:
-    def __init__(self, root: tk.Tk):
+class Main:
+    def __init__(self, parent: tk.Widget):
         # Set error handler
-        root.report_callback_exception = self._handle_exception
+        parent.report_callback_exception = self._handle_exception
 
         # Set title
-        root.title("EU4 Translation Helper")
+        parent.title("EU4 Translation Helper")
 
         # Create the frame and configure the grid
-        root.minsize(width=400, height=260)
-        mainframe = ttk.Frame(root, padding="3 3 12 12")
+        parent.minsize(width=400, height=260)
+        mainframe = ttk.Frame(parent, padding="3 3 12 12")
         mainframe.grid(column=0, row=0, sticky=(tk.N, tk.W, tk.E, tk.S))
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
+        parent.columnconfigure(0, weight=1)
+        parent.rowconfigure(0, weight=1)
         mainframe.columnconfigure(1, weight=1)
 
         # Create the input fields
@@ -143,7 +143,7 @@ def run(debug=False):
         logging.getLogger().setLevel(logging.DEBUG)
         logging.debug("Debug mode enabled")
     root = tk.Tk()
-    Gui(root=root)
+    Main(parent=root)
     root.mainloop()
 
 
