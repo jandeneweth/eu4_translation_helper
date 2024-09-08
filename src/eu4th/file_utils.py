@@ -1,10 +1,11 @@
-import csv
 import dataclasses
 import logging
 import pathlib
 import re
 
 import openpyxl
+import openpyxl.cell
+import openpyxl.styles.numbers
 import openpyxl.worksheet
 import openpyxl.worksheet.worksheet
 
@@ -132,7 +133,7 @@ def write_localisation_to_locfile(
 ) -> int:
     logging.info(f"Writing localisation for language {locdata.language!r} to {str(outfile)!r}")
     written = 0
-    with open(outfile, "w", encoding="utf-8") as fh:
+    with open(outfile, "w", encoding="utf-8-sig") as fh:
         fh.write(f"l_{locdata.language}:\n")
         for identifier, text in locdata.entries.items():
             if text:
@@ -167,10 +168,13 @@ def write_translations_to_excel(
     # Write translations
     for rownr, (locid, entry) in enumerate(translation_data.entries.items(), start=2):
         status = entry.status.value if entry.status is TranslationStatus.OUTDATED else ""
-        ws.cell(row=rownr, column=1, value=locid)
-        ws.cell(row=rownr, column=2, value=status)
-        ws.cell(row=rownr, column=3, value=entry.translation)
-        ws.cell(row=rownr, column=4, value=entry.reference)
+        cells: list[openpyxl.cell.Cell] = []
+        cells.append(ws.cell(row=rownr, column=1, value=locid))
+        cells.append(ws.cell(row=rownr, column=2, value=status))
+        cells.append(ws.cell(row=rownr, column=3, value=entry.translation))
+        cells.append(ws.cell(row=rownr, column=4, value=entry.reference))
+        for cell in cells:
+            cell.number_format = openpyxl.styles.numbers.FORMAT_TEXT
     wb.save(outpath)
 
 
