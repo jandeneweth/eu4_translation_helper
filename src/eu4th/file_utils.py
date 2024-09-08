@@ -114,7 +114,7 @@ def parse_translations_from_excel(filepath: pathlib.Path) -> TranslationData:
     )
     # Read rows
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=4, values_only=True):
-        values = [str(v or "") for v in row]  # ENsure all are strings
+        values = [str(v or "") for v in row]  # Ensure all are strings
         identifier, raw_status, translation, reference = values
         status = TranslationStatus(
             raw_status or (TranslationStatus.DONE.value if translation else TranslationStatus.MISSING.value)
@@ -166,15 +166,15 @@ def write_translations_to_excel(
     ):
         ws.cell(row=1, column=colnr, value=colname)
     # Write translations
-    for rownr, (locid, entry) in enumerate(translation_data.entries.items(), start=2):
+    locids = sorted(translation_data.entries.keys())
+    for rownr, locid in enumerate(locids, start=2):
+        entry = translation_data.entries[locid]
         status = entry.status.value if entry.status is TranslationStatus.OUTDATED else ""
-        cells: list[openpyxl.cell.Cell] = []
-        cells.append(ws.cell(row=rownr, column=1, value=locid))
-        cells.append(ws.cell(row=rownr, column=2, value=status))
-        cells.append(ws.cell(row=rownr, column=3, value=entry.translation))
-        cells.append(ws.cell(row=rownr, column=4, value=entry.reference))
-        for cell in cells:
+        values = [locid, status, entry.translation, entry.reference]
+        for colnr, value in enumerate(values, start=1):
+            cell = ws.cell(row=rownr, column=colnr)
             cell.number_format = openpyxl.styles.numbers.FORMAT_TEXT
+            cell.value = value
     wb.save(outpath)
 
 
@@ -203,10 +203,13 @@ def merge_latest_references_into_translations(
         )
         if locid not in latest_locdata.entries:
             stats.deleted += 1
+            logging.debug(f"Deleted {locid!r}: {current_entry.reference!r}")
         elif locid not in known_translations.entries:
             stats.new += 1
+            logging.debug(f"Added {locid!r}: {latest_reference!r}")
         elif latest_reference != current_entry.reference:
             stats.changed += 1
+            logging.debug(f"Changed {locid!r}: {current_entry.reference!r} -> {latest_reference}")
         if new_status != current_entry.status:
             stats.outdated_translations += 1
     return updated_translations, stats

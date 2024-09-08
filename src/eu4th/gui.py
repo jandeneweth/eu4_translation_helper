@@ -138,11 +138,14 @@ class Gui:
         self.translation_filepath_entry.set_placeholder(str(EU4TH_DIR / f"translations_l_{language}.yml"))
 
 
-def run():
+def run(debug=False):
+    if debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logging.debug("Debug mode enabled")
     root = tk.Tk()
     Gui(root=root)
     root.mainloop()
 
 
 if __name__ == "__main__":
-    run()
+    run(debug=True)
