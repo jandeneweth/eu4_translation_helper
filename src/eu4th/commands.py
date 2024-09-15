@@ -2,7 +2,6 @@ import logging
 import pathlib
 import re
 
-from .defines import EXCEL_FILEPATH
 from .file_utils import (
     get_localisation_from_translations,
     merge_latest_references_into_translations,
@@ -19,6 +18,7 @@ def reload_localisation_to_tsv(
     reference_language: str,
     translation_language: str,
     reference_exclude_patterns: list[str],
+    translation_table: pathlib.Path,
 ):
     # Get reference localisations
     exclude_patterns_re = [re.compile(raw) for raw in reference_exclude_patterns]
@@ -33,9 +33,9 @@ def reload_localisation_to_tsv(
         filepaths=ref_files,
         language=reference_language,
     )
-    # Get translaton data
-    if EXCEL_FILEPATH.exists():
-        translation_data = parse_translations_from_excel(filepath=EXCEL_FILEPATH)
+    # Get translation data
+    if translation_table.exists():
+        translation_data = parse_translations_from_excel(filepath=translation_table)
         if translation_data.reference_language != reference_language:
             raise RuntimeError(
                 f"Reference language does not match: {reference_language!r} "
@@ -58,7 +58,7 @@ def reload_localisation_to_tsv(
     )
     # Update TSV file
     write_translations_to_excel(
-        outpath=EXCEL_FILEPATH,
+        outpath=translation_table,
         translation_data=translation_data,
     )
     info = f"Loaded {len(ref_locdata.entries)} references: "
@@ -73,15 +73,18 @@ def reload_localisation_to_tsv(
     return info
 
 
-def flush_to_localisation(transl_fp: pathlib.Path):
-    if not EXCEL_FILEPATH.exists():
+def flush_to_localisation(
+    translation_table: pathlib.Path,
+    translation_outfile: pathlib.Path,
+):
+    if not translation_table.exists():
         raise RuntimeError(
-            f"The translation table does not yet exist, load localisation first (path {str(EXCEL_FILEPATH)!r})"
+            f"The translation table does not yet exist, load localisation first (path {str(translation_table)!r})"
         )
-    translation_data = parse_translations_from_excel(filepath=EXCEL_FILEPATH)
+    translation_data = parse_translations_from_excel(filepath=translation_table)
     locdata = get_localisation_from_translations(translation_data=translation_data)
     written = write_localisation_to_locfile(
-        outfile=transl_fp,
+        outfile=translation_outfile,
         locdata=locdata,
     )
     info = f"Flushed {written} translations"
