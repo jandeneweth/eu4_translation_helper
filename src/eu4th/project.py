@@ -3,7 +3,7 @@ import json
 import logging
 import pathlib
 
-from .defines import EU4TH_DIR
+from .defines import EU4TH_DIR, EXCEL_FILENAME
 
 _CONFIG_FILENAME = "config.json"
 _KNOWN_PROJECTS_FILE = EU4TH_DIR / "known_projects.json"
@@ -71,13 +71,17 @@ def remove_known_project(project_directory: pathlib.Path):
 
 @dataclasses.dataclass
 class Project:
-    project_directory: pathlib.Path = pathlib.Path.cwd()
+    project_directory: pathlib.Path
     project_name: str = "<Unknown>"
     reference_language: str = "english"
     reference_directory: pathlib.Path | None = None
     translation_language: str = ""
     translation_outfile: pathlib.Path | None = None
     exclude_references: list = dataclasses.field(default_factory=list)
+
+    @property
+    def translations_table(self) -> pathlib.Path:
+        return self.project_directory / EXCEL_FILENAME
 
 
 def save_project(project: Project):
@@ -106,12 +110,12 @@ def load_project(project_directory: pathlib.Path) -> Project:
             content = fh.read()
     except IOError:
         logging.info("Config does not yet exist")
-        return Project()
+        return Project(project_directory=project_directory)
     try:
         config_dict = json.loads(content)
     except json.JSONDecodeError as e:
         logging.warning(f"Error loading config: {e}")
-        return Project()
+        return Project(project_directory=project_directory)
     try:
         return Project(
             project_name=config_dict["project_name"],
@@ -128,4 +132,4 @@ def load_project(project_directory: pathlib.Path) -> Project:
         )
     except ValueError as e:
         logging.warning(f"Error loading config: {e}")
-        return Project()
+        return Project(project_directory=project_directory)

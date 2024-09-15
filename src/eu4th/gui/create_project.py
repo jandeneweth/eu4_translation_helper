@@ -5,6 +5,7 @@ import traceback
 from tkinter import messagebox, ttk
 from tkinter.filedialog import askdirectory
 
+from ..commands import reload_localisation_to_tsv
 from ..project import Project, add_known_project, save_project
 from .gui_helpers import PlaceholderEntry
 
@@ -59,9 +60,20 @@ class CreateProject(tk.Toplevel):
         translation_language_entry = ttk.Entry(self, width=60, textvariable=self.translation_language)
         translation_language_entry.grid(row=4, column=1, sticky=(tk.W, tk.E))
 
+        ttk.Label(self, text="Existing translations directory (optional)").grid(row=5, column=0, sticky=tk.W)
+        self.existing_translations = tk.StringVar()
+        existing_translations_entry = ttk.Entry(self, width=60, textvariable=self.existing_translations)
+        existing_translations_entry.grid(row=5, column=1, sticky=(tk.W, tk.E))
+        select_exist_tr_dir_button = ttk.Button(
+            self,
+            text="Select...",
+            command=self._select_existing_translations,
+        )
+        select_exist_tr_dir_button.grid(row=5, column=2, sticky=tk.W)
+
         # Add save button
         save_config_button = ttk.Button(self, text="Finish", command=self._create_project)
-        save_config_button.grid(row=5, column=1, sticky=tk.W)
+        save_config_button.grid(row=6, column=1, sticky=tk.W)
 
         # Add padding to all widgets
         for child in self.winfo_children():
@@ -83,6 +95,10 @@ class CreateProject(tk.Toplevel):
         reference_directory = askdirectory(mustexist=True)
         self.reference_directory.set(reference_directory)
 
+    def _select_existing_translations(self):
+        existing_translations = askdirectory(mustexist=True)
+        self.existing_translations.set(existing_translations)
+
     def _create_project(self):
         if not self.project_directory.get():
             raise RuntimeError("Missing project name")
@@ -94,17 +110,36 @@ class CreateProject(tk.Toplevel):
             raise RuntimeError("Missing reference language")
         if not self.translation_language.get():
             raise RuntimeError("Missing translation language")
+        existing_translations_dir = (
+            pathlib.Path(self.existing_translations.get()) if self.existing_translations.get() else None
+        )
+        translations_outfile = None
+        if existing_translations_dir:
+            translations_outfile = (
+                existing_translations_dir / f"all_translations_l_{self.translation_language.get()}.yml"
+            )
         project = Project(
             project_name=self.project_name.get(),
             project_directory=pathlib.Path(self.project_directory.get()).resolve(),
             reference_directory=pathlib.Path(self.reference_directory.get()).resolve(),
             reference_language=self.reference_language.get(),
             translation_language=self.translation_language.get(),
+            translation_outfile=translations_outfile,
         )
         save_project(project=project)
         add_known_project(project_directory=project.project_directory)
-        messagebox.showinfo(title="Done", message="Project created")
-        self.destroy()
+        try:
+            reload_localisation_to_tsv(
+                ref_dir=project.reference_directory,
+                reference_language=project.reference_language,
+                translation_language=project.translation_language,
+                reference_exclude_patterns=project.exclude_references,
+                translation_table=project.translations_table,
+                existing_translations_dir=existing_translations_dir,
+            )
+        finally:
+            messagebox.showinfo(title="Done", message="Project created and data imported")
+            self.destroy()
 
     def _handle_exception(self, exc, val, tb):
         logging.exception(val)

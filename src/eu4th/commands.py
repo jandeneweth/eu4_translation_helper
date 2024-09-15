@@ -10,7 +10,7 @@ from .file_utils import (
     write_localisation_to_locfile,
     write_translations_to_excel,
 )
-from .models import TranslationData
+from .models import TranslationData, TranslationEntry, TranslationStatus
 
 
 def reload_localisation_to_tsv(
@@ -19,6 +19,7 @@ def reload_localisation_to_tsv(
     translation_language: str,
     reference_exclude_patterns: list[str],
     translation_table: pathlib.Path,
+    existing_translations_dir: pathlib.Path | None = None,
 ):
     # Get reference localisations
     exclude_patterns_re = [re.compile(raw) for raw in reference_exclude_patterns]
@@ -34,7 +35,29 @@ def reload_localisation_to_tsv(
         language=reference_language,
     )
     # Get translation data
-    if translation_table.exists():
+    if existing_translations_dir is not None:
+        if not existing_translations_dir.is_dir():
+            raise RuntimeError(f"Not a valid directory for existing translations: {str(existing_translations_dir)!r}")
+        logging.debug(f"Loading translations from existing directory: {str(existing_translations_dir)!r}")
+        transl_files = [fp for fp in existing_translations_dir.rglob("*") if fp.is_file() and fp.name.endswith(".yml")]
+        existing_translations_locdata = parse_localisation_from_locfiles(
+            filepaths=transl_files,
+            language=translation_language,
+        )
+        translation_data = TranslationData(
+            reference_language=reference_language,
+            translation_language=translation_language,
+            entries={
+                ref_id: TranslationEntry(
+                    reference=ref_text,
+                    translation=existing_translations_locdata.entries.get(ref_id),
+                    status=TranslationStatus.MISSING,
+                )
+                for ref_id, ref_text in ref_locdata.entries.items()
+            },
+        )
+    elif translation_table.exists():
+        logging.debug(f"Loading translations from existing table: {str(translation_table)!r}")
         translation_data = parse_translations_from_excel(filepath=translation_table)
         if translation_data.reference_language != reference_language:
             raise RuntimeError(
@@ -47,6 +70,7 @@ def reload_localisation_to_tsv(
                 f"versus {translation_data.translation_language!r} in existing data"
             )
     else:
+        logging.debug("No existing translations to start from")
         translation_data = TranslationData(
             reference_language=reference_language,
             translation_language=translation_language,
@@ -81,6 +105,8 @@ def flush_to_localisation(
         raise RuntimeError(
             f"The translation table does not yet exist, load localisation first (path {str(translation_table)!r})"
         )
+    if not translation_outfile.parent.exists():
+        raise RuntimeError(f"Parent directory of output file must exist: {str(translation_outfile.parent)!r}")
     translation_data = parse_translations_from_excel(filepath=translation_table)
     locdata = get_localisation_from_translations(translation_data=translation_data)
     written = write_localisation_to_locfile(

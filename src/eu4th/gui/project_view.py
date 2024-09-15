@@ -5,8 +5,7 @@ import traceback
 from tkinter import messagebox, ttk
 
 from eu4th.commands import flush_to_localisation, reload_localisation_to_tsv
-from eu4th.defines import EXCEL_FILENAME
-from eu4th.gui.gui_helpers import PlaceholderEntry, open_with_filetype_default
+from eu4th.gui.gui_helpers import open_with_filetype_default
 
 from ..project import Project, save_project
 
@@ -40,12 +39,12 @@ class ProjectView(tk.Toplevel):
         load_localisation_button.grid(column=3, row=1, sticky=tk.W)
 
         ttk.Label(self, text="Translation table").grid(column=0, row=2, sticky=tk.W)
-        translations_table_entry = ttk.Label(self, text=str(self.translations_table))
+        translations_table_entry = ttk.Label(self, text=str(self.project.translations_table))
         translations_table_entry.grid(column=1, row=2, sticky=(tk.W, tk.E))
         open_translations_button = ttk.Button(
             self,
             text="Open...",
-            command=lambda: open_with_filetype_default(self.translations_table),
+            command=lambda: open_with_filetype_default(self.project.translations_table),
         )
         open_translations_button.grid(column=2, row=2, sticky=tk.W)
 
@@ -57,12 +56,7 @@ class ProjectView(tk.Toplevel):
         self.translation_outfile = tk.StringVar(
             value=str(project.translation_outfile) if project.translation_outfile else ""
         )
-        self.translation_outfile_entry = PlaceholderEntry(
-            self,
-            placeholder=f"{project.project_directory}/translations_l_{project.translation_language}.yml",
-            width=60,
-            textvariable=self.translation_outfile,
-        )
+        self.translation_outfile_entry = ttk.Entry(self, width=60, textvariable=self.translation_outfile)
         self.translation_outfile_entry.grid(column=1, row=4, sticky=(tk.W, tk.E))
         open_translation_outfile_button = ttk.Button(
             self,
@@ -89,30 +83,28 @@ class ProjectView(tk.Toplevel):
         self.grab_set()
         master.wait_window(self)
 
-    @property
-    def translations_table(self) -> pathlib.Path:
-        return self.project.project_directory / EXCEL_FILENAME
-
     def _update_config(self):
-        self.project.reference_directory = self.reference_directory.get()
-        self.project.translation_outfile = self.translation_outfile.get()
+        self.project.reference_directory = pathlib.Path(self.reference_directory.get())
+        self.project.translation_outfile = pathlib.Path(self.translation_outfile.get())
         save_project(project=self.project)
         messagebox.showinfo(title="Done", message="Configuration saved")
 
     def _load_localisation(self):
         feedback = reload_localisation_to_tsv(
-            ref_dir=self.project.reference_directory.get(),
+            ref_dir=pathlib.Path(self.reference_directory.get()),
             reference_language=self.project.reference_language,
             translation_language=self.project.translation_language,
             reference_exclude_patterns=self.project.exclude_references,
-            translation_table=self.translations_table,
+            translation_table=self.project.translations_table,
         )
         messagebox.showinfo(title="Results", message=feedback)
 
     def _flush_translations(self):
+        if not self.translation_outfile.get():
+            raise RuntimeError("Select a translations output file first")
         feedback = flush_to_localisation(
-            translation_table=self.translations_table,
-            translation_outfile=self.translation_outfile.get(),
+            translation_table=self.project.translations_table,
+            translation_outfile=pathlib.Path(self.translation_outfile.get()),
         )
         messagebox.showinfo(title="Results", message=feedback)
 
